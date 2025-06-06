@@ -36,8 +36,14 @@ func main() {
 		})
 	})
 
-	// Static files for .well-known
-	app.Static("/.well-known", "./.well-known")
+	// Serve static files from public directory
+	app.Static("/", "./public")
+	
+	// Specifically serve .well-known files with correct Content-Type
+	app.Static("/.well-known", "./public/.well-known", fiber.Static{
+		Compress: false,
+		Browse:   false,
+	})
 
 	// Initialize database
 	db, err := storage.NewDB()

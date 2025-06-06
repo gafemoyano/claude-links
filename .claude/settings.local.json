@@ -4,7 +4,8 @@
       "Bash(mkdir:*)",
       "Bash(go get:*)",
       "Bash(docker compose:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
