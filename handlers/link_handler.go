@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"os"
 	"strings"
 	"time"
 
@@ -20,6 +21,17 @@ func NewLinkHandler(db *storage.DB) *LinkHandler {
 	return &LinkHandler{db: db}
 }
 
+// CreateLink creates a new short link
+// @Summary Create a new short link
+// @Description Create a new short link that redirects to the specified deep link
+// @Tags links
+// @Accept json
+// @Produce json
+// @Param link body models.CreateLinkRequest true "Link creation request"
+// @Success 201 {object} models.Link
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /create [post]
 func (h *LinkHandler) CreateLink(c *fiber.Ctx) error {
 	var req models.CreateLinkRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -28,9 +40,21 @@ func (h *LinkHandler) CreateLink(c *fiber.Ctx) error {
 		})
 	}
 
-	if req.DeepLink == "" || req.IOSStore == "" || req.AndroidStore == "" {
+	if req.UniversalLink == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "deep_link, ios_store, and android_store are required",
+			"error": "universal_link is required",
+		})
+	}
+
+	if req.IOSStore == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "ios_store is required",
+		})
+	}
+
+	if req.AndroidStore == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "android_store is required",
 		})
 	}
 
@@ -43,15 +67,15 @@ func (h *LinkHandler) CreateLink(c *fiber.Ctx) error {
 
 	now := time.Now()
 	link := &models.Link{
-		ID:           shortCode,
-		DeepLink:     req.DeepLink,
-		IOSStore:     req.IOSStore,
-		AndroidStore: req.AndroidStore,
-		Title:        req.Title,
-		Description:  req.Description,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-		ClickCount:   0,
+		ID:            shortCode,
+		UniversalLink: req.UniversalLink,
+		IOSStore:      req.IOSStore,
+		AndroidStore:  req.AndroidStore,
+		Title:         req.Title,
+		Description:   req.Description,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		ClickCount:    0,
 	}
 
 	if err := h.db.CreateLink(link); err != nil {
@@ -63,6 +87,16 @@ func (h *LinkHandler) CreateLink(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(link)
 }
 
+// RedirectLink redirects to the appropriate platform-specific link using universal/app links
+// @Summary Redirect to platform-specific link
+// @Description Redirects users using modern universal links (iOS) and app links (Android) based on their User-Agent
+// @Tags links
+// @Param shortcode path string true "Short code of the link"
+// @Success 302 "Redirect to the appropriate link"
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /{shortcode} [get]
 func (h *LinkHandler) RedirectLink(c *fiber.Ctx) error {
 	shortCode := c.Params("shortcode")
 	if shortCode == "" {
@@ -91,18 +125,37 @@ func (h *LinkHandler) RedirectLink(c *fiber.Ctx) error {
 
 	switch platform {
 	case "ios":
-		return c.Redirect(link.IOSStore, fiber.StatusFound)
+		// For iOS, redirect to universal link first
+		// iOS will automatically handle opening the app if installed
+		// or falling back to App Store via the universal link infrastructure
+		return c.Redirect(link.UniversalLink, fiber.StatusFound)
 	case "android":
-		intentURL := buildAndroidIntent(link.DeepLink, link.AndroidStore)
-		return c.Redirect(intentURL, fiber.StatusFound)
+		// For Android, redirect to universal link first  
+		// Android will automatically handle opening the app if installed
+		// or falling back to Play Store via the app link infrastructure
+		return c.Redirect(link.UniversalLink, fiber.StatusFound)
 	default:
-		// For unknown platforms, try the deep link first
-		// If the app is installed, it will intercept the deep link
-		// If not, the browser will hit our server again and we can redirect to a store
-		return c.Redirect(link.DeepLink, fiber.StatusFound)
+		// For desktop/unknown platforms, show a landing page with all options
+		return c.JSON(fiber.Map{
+			"universal_link": link.UniversalLink,
+			"ios_store":      link.IOSStore,
+			"android_store":  link.AndroidStore,
+			"title":          link.Title,
+			"description":    link.Description,
+		})
 	}
 }
 
+// GetLinkInfo retrieves information about a specific link
+// @Summary Get link information
+// @Description Get detailed information about a specific short link including metadata and click count
+// @Tags links
+// @Param shortcode path string true "Short code of the link"
+// @Success 200 {object} models.Link
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /info/{shortcode} [get]
 func (h *LinkHandler) GetLinkInfo(c *fiber.Ctx) error {
 	shortCode := c.Params("shortcode")
 	if shortCode == "" {
@@ -127,6 +180,25 @@ func (h *LinkHandler) GetLinkInfo(c *fiber.Ctx) error {
 	return c.JSON(link)
 }
 
+// GetAllLinks retrieves all links from the database
+// @Summary Get all links
+// @Description Get a list of all short links in the system
+// @Tags links
+// @Produce json
+// @Success 200 {array} models.Link
+// @Failure 500 {object} map[string]string
+// @Router /admin/links [get]
+func (h *LinkHandler) GetAllLinks(c *fiber.Ctx) error {
+	links, err := h.db.GetAllLinks()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve links",
+		})
+	}
+
+	return c.JSON(links)
+}
+
 func generateShortCode() (string, error) {
 	bytes := make([]byte, 3)
 	if _, err := rand.Read(bytes); err != nil {
@@ -149,8 +221,3 @@ func detectPlatform(userAgent string) string {
 	return "unknown"
 }
 
-func buildAndroidIntent(deepLink, fallbackURL string) string {
-	return "intent://" + strings.TrimPrefix(deepLink, "myapp://") + 
-		"#Intent;scheme=myapp;package=com.example.app;S.browser_fallback_url=" + 
-		fallbackURL + ";end"
-}

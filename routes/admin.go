@@ -23,4 +23,5 @@ func SetupAdminRoutes(app *fiber.App, linkHandler *handlers.LinkHandler) {
 	}))
 
 	admin.Post("/create", linkHandler.CreateLink)
+	admin.Get("/links", linkHandler.GetAllLinks)
 }

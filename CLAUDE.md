@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-## Project: Dynamic Link Service with Go + Fiber
+## Project: Universal/App Link Service with Go + Fiber
 
 ### 🧩 Overview
 
-This service replaces Firebase Dynamic Links. It supports generating short URLs that redirect users to appropriate destinations based on device platform, deep linking into a Flutter app, or fallback to the App/Play Store when the app isn't installed.
+This service replaces Firebase Dynamic Links using modern universal links (iOS) and app links (Android). It generates short URLs that redirect users to appropriate destinations based on device platform, using HTTPS-based universal/app links for seamless deep linking into Flutter apps, with fallback to App/Play Store when the app isn't installed.
 
 ---
 
@@ -42,30 +42,33 @@ This service replaces Firebase Dynamic Links. It supports generating short URLs 
 
 ## 🎯 Features
 
-- [x] Create short links for app content
+- [x] Create short links for app content  
 - [x] Detect platform via User-Agent
-- [x] Redirect:
-  - iOS → universal link or App Store
-  - Android → intent URI or Play Store
-- [x] Handle fallback logic
-- [x] Host Apple + Android association files
-- [ ] (Optional) Analytics/logging
-- [ ] (Optional) Admin auth for link creation
+- [x] Redirect using modern approach:
+  - iOS → Universal Links (HTTPS URLs) with App Store fallback
+  - Android → App Links (HTTPS URLs) with Play Store fallback
+- [x] Handle fallback logic when app not installed
+- [x] Host Apple App Site Association and Android Asset Links files
+- [x] Analytics/logging with click tracking
+- [x] Admin auth for link creation
 
 ---
 
 ## 🔗 Short Link Format
 
-Example:  
+Example:
 `https://yourdomain.com/abc123`
 
 Maps to:
+
 ```json
 {
   "id": "abc123",
-  "deep_link": "myapp://product?id=987",
-  "ios_store": "https://apps.apple.com/app/id123456789",
-  "android_store": "https://play.google.com/store/apps/details?id=com.example.app"
+  "universal_link": "https://yourdomain.com/app/product?id=987",
+  "ios_store": "https://apps.apple.com/co/app/trii/id1513826307",
+  "android_store": "https://play.google.com/store/apps/details?id=com.triico.app&hl=en",
+  "title": "Product Page",
+  "description": "Check out this awesome product"
 }
 ```
 
@@ -75,19 +78,18 @@ Maps to:
 
 ### `GET /:shortcode`
 
-- Parse `User-Agent` to detect device
-- If app installed:
-  - iOS: redirect via universal link (e.g., `https://yourdomain.com/app/path`)
-  - Android: use `intent://` scheme
-- If app not installed:
-  - Redirect to respective app store
-- Fallback: Show a landing page or error
+- Parse `User-Agent` to detect device platform
+- Smart redirect behavior:
+  - **iOS**: Redirect to universal link (HTTPS URL that opens app if installed, otherwise goes to App Store)
+  - **Android**: Redirect to app link (HTTPS URL that opens app if installed, otherwise goes to Play Store)  
+  - **Desktop/Unknown**: Show landing page with all options
+- All redirects use HTTPS URLs for maximum compatibility
 
-### `POST /create` (Protected)
+### `POST /admin/create` (Protected)
 
-- JSON body with deep link, app store URLs
+- JSON body with universal link path, app store URLs, title, description
 - Generates random short code
-- Stores in PostgreSQL
+- Stores in PostgreSQL with click tracking
 
 ---
 
@@ -109,27 +111,41 @@ Maps to:
 
 ---
 
-## 📱 Flutter Deep Link Handling
+## 📱 Flutter Universal/App Link Handling
 
-### iOS
+### iOS Universal Links
 
-- Configure `applinks:yourdomain.com` in Xcode
-- Add Associated Domains entitlement
-- Host `.well-known/apple-app-site-association`
+- Configure `applinks:yourdomain.com` in Associated Domains capability
+- Add entitlement in Xcode project settings
+- Host `.well-known/apple-app-site-association` at domain root
+- Links use HTTPS format: `https://yourdomain.com/app/path`
 
-### Android
+### Android App Links
 
-- Add intent filters to `AndroidManifest.xml`
-- Host `.well-known/assetlinks.json`
-- Sign APK with matching SHA256 cert
+- Add intent filters with `android:autoVerify="true"` to `AndroidManifest.xml`
+- Host `.well-known/assetlinks.json` at domain root
+- Sign APK with matching SHA256 certificate fingerprint
+- Links use HTTPS format: `https://yourdomain.com/app/path`
 
 ### Flutter Setup
 
-Use `uni_links` or `go_router`:
+Use `go_router` for modern routing:
+
 ```dart
-void main() async {
-  final initialUri = await getInitialUri();
-  runApp(MyApp(initialUri: initialUri));
+final GoRouter _router = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/app/:action',
+      builder: (context, state) {
+        final action = state.pathParameters['action'];
+        return handleDeepLink(action, state.uri.queryParameters);
+      },
+    ),
+  ],
+);
+
+void main() {
+  runApp(MaterialApp.router(routerConfig: _router));
 }
 ```
 
@@ -156,10 +172,11 @@ void main() async {
 ## 🧠 Future Improvements
 
 - Analytics dashboard (clicks, devices, countries)
-- Link expiration
-- QR code generator
-- Admin UI with auth
+- Link expiration and custom domains
+- QR code generator for links
+- Admin UI with enhanced auth
+- A/B testing for different fallback strategies
 
 ---
 
-Made for modern app teams migrating from Firebase Dynamic Links.
+Made for modern app teams migrating from Firebase Dynamic Links to universal/app links.

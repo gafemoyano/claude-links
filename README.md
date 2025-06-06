@@ -1,6 +1,6 @@
-# BE-Links - Dynamic Link Service
+# BE-Links - Universal/App Link Service
 
-A Go + Fiber service that replaces Firebase Dynamic Links, providing smart redirects based on device platform and deep linking capabilities.
+A Go + Fiber service that replaces Firebase Dynamic Links using modern universal links (iOS) and app links (Android), providing smart HTTPS-based redirects with seamless deep linking capabilities.
 
 ## 🚀 Quick Start
 
@@ -26,7 +26,7 @@ The server starts on `http://localhost:3000`
 - **Backend**: Go + Fiber
 - **Database**: PostgreSQL
 - **Containerization**: Docker Compose
-- **Mobile Deep Links**: Universal Links (iOS) + App Links (Android)
+- **Mobile Deep Links**: Universal Links (iOS) + App Links (Android) via HTTPS
 
 ## 📖 Detailed Setup
 
@@ -86,7 +86,7 @@ curl -X POST http://localhost:3000/admin/create \
   -u admin:password \
   -H "Content-Type: application/json" \
   -d '{
-    "deep_link": "myapp://product?id=987",
+    "universal_link": "https://yourdomain.com/app/product?id=987",
     "ios_store": "https://apps.apple.com/app/id123456789",
     "android_store": "https://play.google.com/store/apps/details?id=com.example.app",
     "title": "Product Page",
@@ -98,7 +98,7 @@ Response:
 ```json
 {
   "id": "abc123",
-  "deep_link": "myapp://product?id=987",
+  "universal_link": "https://yourdomain.com/app/product?id=987",
   "ios_store": "https://apps.apple.com/app/id123456789",
   "android_store": "https://play.google.com/store/apps/details?id=com.example.app",
   "title": "Product Page",
@@ -127,17 +127,17 @@ curl -L -A "Mozilla/5.0 (Linux; Android 10; SM-G975F)" http://localhost:3000/abc
 
 ### Platform Detection
 
-The service detects the user's platform via User-Agent and redirects accordingly:
+The service detects the user's platform via User-Agent and uses modern universal/app link redirects:
 
-- **iOS devices**: Redirects to App Store URL
-- **Android devices**: Creates intent URI with fallback to Play Store
-- **Unknown devices**: Returns JSON with all available links
+- **iOS devices**: Redirects to universal link (HTTPS URL that opens app if installed, otherwise App Store)
+- **Android devices**: Redirects to app link (HTTPS URL that opens app if installed, otherwise Play Store)  
+- **Desktop/Unknown devices**: Shows landing page with all available options
 
 ### Redirect Logic
 
-1. **iOS**: Direct redirect to `ios_store` URL
-2. **Android**: Builds intent URI: `intent://path#Intent;scheme=myapp;package=com.example.app;S.browser_fallback_url=PLAY_STORE_URL;end`
-3. **Other**: Returns JSON response with all links
+1. **iOS**: Redirects to universal link HTTPS URL - iOS automatically handles app opening or App Store fallback
+2. **Android**: Redirects to app link HTTPS URL - Android automatically handles app opening or Play Store fallback
+3. **Other**: Returns JSON response with all links or landing page
 
 ## 📱 Mobile App Integration
 
@@ -214,7 +214,7 @@ The application automatically creates this table:
 ```sql
 CREATE TABLE links (
     id VARCHAR(255) PRIMARY KEY,
-    deep_link TEXT NOT NULL,
+    universal_link TEXT NOT NULL,
     ios_store TEXT NOT NULL,
     android_store TEXT NOT NULL,
     title TEXT,

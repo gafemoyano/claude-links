@@ -1,0 +1,67 @@
+name: 🚀  Deploy
+
+on:
+  push:
+    branches:
+      - master
+      - qa
+
+env:
+  GCP_DEPLOY_LB: ${{ secrets.GCP_DEPLOY_LB }}
+
+jobs:
+  deploy-prod:
+    name: 🚀 Deploy to Prod
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🚀 Deploy
+        uses: ./.github/actions/deploy_gcp
+        with:
+          service_account_json: ${{ secrets.GCP_PROD_CREDENTIALS }}
+          app_name: ${{ secrets.GCP_APP_NAME }}
+          image_name: gcr.io/${{ secrets.GCP_PROD_PROJECT_ID }}/${{ secrets.GCP_APP_NAME }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+
+      - name: Rename app name
+        id: rename_app
+        run: echo "APP_NAME_LB=$(echo ${{ secrets.GCP_APP_NAME }} | sed 's/be-/be-lb-/')" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Deploy load balancer
+        if: ${{ env.GCP_DEPLOY_LB == 'true' }}
+        uses: ./.github/actions/deploy_gcp
+        with:
+          service_account_json: ${{ secrets.GCP_PROD_CREDENTIALS }}
+          app_name: ${{ steps.rename_app.outputs.APP_NAME_LB }}
+          image_name: gcr.io/${{ secrets.GCP_PROD_PROJECT_ID }}/${{ steps.rename_app.outputs.APP_NAME_LB }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+
+  deploy-qa:
+    name: 🚀 Deploy to QA
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/qa' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🚀 Deploy
+        uses: ./.github/actions/deploy_gcp
+        with:
+          service_account_json: ${{ secrets.GCP_QA_CREDENTIALS }}
+          app_name: ${{ secrets.GCP_APP_NAME }}
+          image_name: gcr.io/${{ secrets.GCP_QA_PROJECT_ID }}/${{ secrets.GCP_APP_NAME }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+
+      - name: Rename app name
+        id: rename_app
+        run: echo "APP_NAME_LB=$(echo ${{ secrets.GCP_APP_NAME }} | sed 's/be-/be-lb-/')" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Deploy load balancer
+        if: ${{ env.GCP_DEPLOY_LB == 'true' }}
+        uses: ./.github/actions/deploy_gcp
+        with:
+          service_account_json: ${{ secrets.GCP_QA_CREDENTIALS }}
+          app_name: ${{ steps.rename_app.outputs.APP_NAME_LB }}
+          image_name: gcr.io/${{ secrets.GCP_QA_PROJECT_ID }}/${{ steps.rename_app.outputs.APP_NAME_LB }}
+          ssh-key: ${{ secrets.SSH_KEY }}

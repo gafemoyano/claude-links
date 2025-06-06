@@ -1,0 +1,259 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This service replaces Firebase Dynamic Links. It supports generating short URLs that redirect users to appropriate destinations based on device platform.",
+        "title": "Dynamic Link Service API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:3000",
+    "basePath": "/",
+    "paths": {
+        "/admin/links": {
+            "get": {
+                "description": "Get a list of all short links in the system",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "links"
+                ],
+                "summary": "Get all links",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Link"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/create": {
+            "post": {
+                "description": "Create a new short link that redirects to the specified deep link",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "links"
+                ],
+                "summary": "Create a new short link",
+                "parameters": [
+                    {
+                        "description": "Link creation request",
+                        "name": "link",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Link"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/info/{shortcode}": {
+            "get": {
+                "description": "Get detailed information about a specific short link including metadata and click count",
+                "tags": [
+                    "links"
+                ],
+                "summary": "Get link information",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Short code of the link",
+                        "name": "shortcode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Link"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/{shortcode}": {
+            "get": {
+                "description": "Redirects users using modern universal links (iOS) and app links (Android) based on their User-Agent",
+                "tags": [
+                    "links"
+                ],
+                "summary": "Redirect to platform-specific link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Short code of the link",
+                        "name": "shortcode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to the appropriate link"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.CreateLinkRequest": {
+            "type": "object",
+            "required": [
+                "android_store",
+                "ios_store",
+                "universal_link"
+            ],
+            "properties": {
+                "android_store": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "ios_store": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "universal_link": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Link": {
+            "type": "object",
+            "properties": {
+                "android_store": {
+                    "type": "string"
+                },
+                "click_count": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ios_store": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "universal_link": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

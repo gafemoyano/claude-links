@@ -1,0 +1,174 @@
+basePath: /
+definitions:
+  models.CreateLinkRequest:
+    properties:
+      android_store:
+        type: string
+      description:
+        type: string
+      ios_store:
+        type: string
+      title:
+        type: string
+      universal_link:
+        type: string
+    required:
+    - android_store
+    - ios_store
+    - universal_link
+    type: object
+  models.Link:
+    properties:
+      android_store:
+        type: string
+      click_count:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      ios_store:
+        type: string
+      title:
+        type: string
+      universal_link:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:3000
+info:
+  contact: {}
+  description: This service replaces Firebase Dynamic Links. It supports generating
+    short URLs that redirect users to appropriate destinations based on device platform.
+  title: Dynamic Link Service API
+  version: "1.0"
+paths:
+  /{shortcode}:
+    get:
+      description: Redirects users using modern universal links (iOS) and app links
+        (Android) based on their User-Agent
+      parameters:
+      - description: Short code of the link
+        in: path
+        name: shortcode
+        required: true
+        type: string
+      responses:
+        "302":
+          description: Redirect to the appropriate link
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Redirect to platform-specific link
+      tags:
+      - links
+  /admin/links:
+    get:
+      description: Get a list of all short links in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Link'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all links
+      tags:
+      - links
+  /create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new short link that redirects to the specified deep link
+      parameters:
+      - description: Link creation request
+        in: body
+        name: link
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Link'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new short link
+      tags:
+      - links
+  /info/{shortcode}:
+    get:
+      description: Get detailed information about a specific short link including
+        metadata and click count
+      parameters:
+      - description: Short code of the link
+        in: path
+        name: shortcode
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Link'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get link information
+      tags:
+      - links
+swagger: "2.0"
