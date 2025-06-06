@@ -8,4 +8,5 @@ import (
 
 func SetupRedirectRoutes(app *fiber.App, linkHandler *handlers.LinkHandler) {
 	app.Get("/:shortcode", linkHandler.RedirectLink)
+	app.Get("/info/:shortcode", linkHandler.GetLinkInfo)
 }

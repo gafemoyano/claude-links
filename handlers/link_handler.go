@@ -96,14 +96,35 @@ func (h *LinkHandler) RedirectLink(c *fiber.Ctx) error {
 		intentURL := buildAndroidIntent(link.DeepLink, link.AndroidStore)
 		return c.Redirect(intentURL, fiber.StatusFound)
 	default:
-		return c.JSON(fiber.Map{
-			"deep_link":     link.DeepLink,
-			"ios_store":     link.IOSStore,
-			"android_store": link.AndroidStore,
-			"title":         link.Title,
-			"description":   link.Description,
+		// For unknown platforms, try the deep link first
+		// If the app is installed, it will intercept the deep link
+		// If not, the browser will hit our server again and we can redirect to a store
+		return c.Redirect(link.DeepLink, fiber.StatusFound)
+	}
+}
+
+func (h *LinkHandler) GetLinkInfo(c *fiber.Ctx) error {
+	shortCode := c.Params("shortcode")
+	if shortCode == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Short code is required",
 		})
 	}
+
+	link, err := h.db.GetLink(shortCode)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Database error",
+		})
+	}
+
+	if link == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Link not found",
+		})
+	}
+
+	return c.JSON(link)
 }
 
 func generateShortCode() (string, error) {
