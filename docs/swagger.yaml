@@ -2,19 +2,15 @@ basePath: /
 definitions:
   models.CreateLinkRequest:
     properties:
-      android_store:
+      deep_link:
         type: string
       description:
-        type: string
-      ios_store:
         type: string
       title:
         type: string
       universal_link:
         type: string
     required:
-    - android_store
-    - ios_store
     - universal_link
     type: object
   models.Link:
@@ -24,6 +20,8 @@ definitions:
       click_count:
         type: integer
       created_at:
+        type: string
+      deep_link:
         type: string
       description:
         type: string
@@ -38,7 +36,6 @@ definitions:
       updated_at:
         type: string
     type: object
-host: localhost:3000
 info:
   contact: {}
   description: This service replaces Firebase Dynamic Links. It supports generating
@@ -80,28 +77,7 @@ paths:
       summary: Redirect to platform-specific link
       tags:
       - links
-  /admin/links:
-    get:
-      description: Get a list of all short links in the system
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Link'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get all links
-      tags:
-      - links
-  /create:
+  /admin/create:
     post:
       consumes:
       - application/json
@@ -133,6 +109,64 @@ paths:
               type: string
             type: object
       summary: Create a new short link
+      tags:
+      - links
+  /admin/links:
+    get:
+      description: Get a list of all short links in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Link'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all links
+      tags:
+      - links
+  /deeplink/{shortcode}:
+    get:
+      description: Generate a deeplink with triiapp:// scheme that opens the app directly
+      parameters:
+      - description: Short code of the link
+        in: path
+        name: shortcode
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get deeplink for short code
       tags:
       - links
   /info/{shortcode}:

@@ -11,8 +11,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/swagger"
 	"github.com/joho/godotenv"
-	fiberSwagger "github.com/swaggo/fiber-swagger"
 
 	_ "be-links/docs" // Import generated docs
 )
@@ -20,7 +20,6 @@ import (
 // @title Dynamic Link Service API
 // @version 1.0
 // @description This service replaces Firebase Dynamic Links. It supports generating short URLs that redirect users to appropriate destinations based on device platform.
-// @host localhost:3000
 // @BasePath /
 func main() {
 	err := godotenv.Load()
@@ -30,8 +29,13 @@ func main() {
 
 	// Environment variables expected:
 	// DATABASE_URL - PostgreSQL connection string
+	// BASE_URL - Base URL for links (e.g., https://links.trii.tech for dev, https://links.trii.ws for prod)
+	// WEBSITE_URL - Website URL for desktop redirects (optional, defaults to https://trii.co)
 	// IOS_STORE_URL - iOS App Store URL (optional, defaults to https://apps.apple.com/app/id123456789)
 	// ANDROID_STORE_URL - Android Play Store URL (optional, defaults to https://play.google.com/store/apps/details?id=com.triico.app&hl=en)
+	// ANDROID_PACKAGE_NAME - Android package name (optional, defaults to com.trii.qa for dev)
+	// ANDROID_SHA256_FINGERPRINT - Android SHA256 certificate fingerprint
+	// IOS_APP_ID - iOS App ID with team prefix (optional, defaults to TEAMID.com.trii.qa for dev)
 	// PORT - Server port (optional, defaults to 3000)
 
 	app := fiber.New(fiber.Config{
@@ -59,12 +63,6 @@ func main() {
 	// Serve static files from public directory
 	app.Static("/", "./public")
 
-	// Specifically serve .well-known files with correct Content-Type
-	app.Static("/.well-known", "./public/.well-known", fiber.Static{
-		Compress: false,
-		Browse:   false,
-	})
-
 	// Initialize database
 	db, err := storage.NewDB()
 	if err != nil {
@@ -76,9 +74,17 @@ func main() {
 	linkHandler := handlers.NewLinkHandler(db)
 
 	// Swagger documentation
-	app.Get("/docs/*", fiberSwagger.WrapHandler)
+	app.Get("/docs/*", swagger.HandlerDefault)
+	//redirect to docs/index.html
+	app.Get("/docs", func(ctx *fiber.Ctx) error {
+		return ctx.Redirect("/docs/index.html")
+	})
 
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.Status(200).JSON(fiber.Map{"status": "alive"})
+	})
 	// Setup routes
+	routes.SetupWellKnownRoutes(app)
 	routes.SetupRedirectRoutes(app, linkHandler)
 	routes.SetupAdminRoutes(app, linkHandler)
 

@@ -15,39 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/admin/links": {
-            "get": {
-                "description": "Get a list of all short links in the system",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "links"
-                ],
-                "summary": "Get all links",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Link"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/create": {
+        "/admin/create": {
             "post": {
                 "description": "Create a new short link that redirects to the specified deep link",
                 "consumes": [
@@ -80,6 +48,94 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/links": {
+            "get": {
+                "description": "Get a list of all short links in the system",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "links"
+                ],
+                "summary": "Get all links",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Link"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/deeplink/{shortcode}": {
+            "get": {
+                "description": "Generate a deeplink with triiapp:// scheme that opens the app directly",
+                "tags": [
+                    "links"
+                ],
+                "summary": "Get deeplink for short code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Short code of the link",
+                        "name": "shortcode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -207,18 +263,13 @@ const docTemplate = `{
         "models.CreateLinkRequest": {
             "type": "object",
             "required": [
-                "android_store",
-                "ios_store",
                 "universal_link"
             ],
             "properties": {
-                "android_store": {
+                "deep_link": {
                     "type": "string"
                 },
                 "description": {
-                    "type": "string"
-                },
-                "ios_store": {
                     "type": "string"
                 },
                 "title": {
@@ -239,6 +290,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "deep_link": {
                     "type": "string"
                 },
                 "description": {
@@ -267,7 +321,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:3000",
+	Host:             "",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Dynamic Link Service API",
